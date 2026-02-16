@@ -40,9 +40,14 @@ This installs all required packages, which may take a few minutes. You only need
 
 This workflow includes loading the data, performing quality control and pre-processing steps like filtering and normalization, and then conducting statistical analyses to identify differentially abundant proteins. Finally, it generates visualizations to help interpret the results. Important outputs, like pre-processed data and statistical results, are saved in the "Output" folder for easy access.
 
-The workflow is organized as R-Markdown file, which combines code and narrative by allowing extensive documentation alongside the code. You can run each code chunk individually by clicking the green triangle next to it, or you can run the entire document by clicking "Run" -> "Run All".
+The workflow is organized as R-Markdown file, which combines code and narrative by allowing extensive documentation alongside the code. This repository has two pre-written R-Markdown scripts for analysis: 
 
-You can also generate a nicely formatted HTML report by clicking "Knit" -> "Knit to HTML". This will execute all code chunks and compile the results into a single, easy-to-read report, which will be saved in the Scripts location.
+1. *Data_analysis_slim.Rmd*: A streamlined version of the workflow that includes unpaired statistical analysis, which is suitable for comparing independent groups (e.g., treatment vs. control). This script will perform unpaired limma.
+2. *Data_analysis_slim_paired.Rmd*: A version of the workflow that includes paired statistical analysis, which is useful when you have matched samples (e.g., before and after treatment from the same subjects). This script will perform paired limma. Preprocessing is analogous to 1.
+
+Open a script within RStudio by clicking it within your file explorer. Executable code is written in chunks, initiated by lines starting with ```{r}. Run each code chunk individually by clicking the green triangle next to it, or you can run the entire document by clicking "Run" -> "Run All". Everything outside the chunks is narrative text that explains the code and results. This is very handy for documenting your analyses and insights.
+
+You can also generate a nicely formatted HTML report by clicking "Knit" -> "Knit to HTML". This will execute all code chunks and compile the results into a single, easy-to-read report, which will be saved in the Scripts' location.
 
 Almost every line of code is commented to explain what it does, so feel free to read through the comments for a better understanding of each step. This example code should run without any adjustments from your side.
 

@@ -3,4 +3,4 @@
 .RData
 .Ruserdata
 *.html
-*.csv
+*OutputData/.csv

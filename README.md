@@ -3,8 +3,8 @@
 This guide gets you into analyzing DIA-NN proteomics data using R.
 
 ## Prerequisites
-* **R**: Download current version from https://cran.r-project.org/
-* **RStudio**: Free IDE from  https://posit.co/download/rstudio-desktop/
+* **R**: Download & Install current version from https://cran.r-project.org/
+* **RStudio**: Download & install current version from  https://posit.co/download/rstudio-desktop/
 
 ## Step 1: Download and Open
 
@@ -14,7 +14,8 @@ This guide gets you into analyzing DIA-NN proteomics data using R.
 
 The folder structure is as follows:
 
-`MassSpec_ExampleWorkflow/
+```
+MassSpec_ExampleWorkflow/
 ├── MassSpec_ExampleWorkflow.Rproj     # Open this!
 ├── MS Data Analysis Workflow.Rmd      # Main script
 ├── InputData/
@@ -22,7 +23,8 @@ The folder structure is as follows:
 │   └── Example_Meta_Data/
 │       └── Example_meta.csv           # Sample → group mapping
 ├── OutputData/                        # Generated here (empty initially)
-└── .gitignore                         # Ignores large files`
+└── .gitignore                         # Ignores large files
+```
 
 Why projects? They bundle files, set working directory, save history/settings, and help you stay organized.
 
@@ -48,7 +50,7 @@ Almost every line of code is commented to explain what it does, so feel free to 
 
 It's recommended to use a new R project for analysis of your own data:
 
-1. Copy this directory and rename it to something you'd like, e.g. "My_super_awesome_proteomics_data_analysis".
+1. Copy this directory and rename it to something you'd like, e.g. `My_super_awesome_proteomics_data_analysis`.
 2. Delete the .Rproj file in the new repository and create a new one by opening RStudio, click on New Project -> Existing Directory -> select your new folder.
 3. Replace the example data in `InputData/Example_Raw_Data` with your own DIA-NN parquet files. Make sure to keep the same file structure and naming conventions.
 4. Generate a new sample metadata file (e.g. `My_meta.csv`) that maps your samples to their respective groups, and place it in `InputData/Example_Meta_Data/`.
@@ -56,5 +58,6 @@ It's recommended to use a new R project for analysis of your own data:
 
 In the script, it's highlighted where you need to make adjustments to load your own data. Once you've made these changes, you can run the analysis as described in Step 3. This sets you up for your first analysis of your own DIA-NN proteomics data! Feel free to extend the workflow with additional analyses or visualizations as needed.
 
+## Disclaimer
 
-**NOTE:** This script is purposely made simple and straightforward to get your started quickly. It is not meant to be a comprehensive or optimized workflow for all types of proteomics data analysis. Depending on your specific research question and data, you may need to adjust the code, add additional steps for data processing verification, like normalization efficiency and imputation bias, or use different statistical methods. Always critically evaluate the results and consider consulting with a statistician or bioinformatician if you're unsure about any aspect of the analysis.
+This script is purposely made simple and straightforward to get your started quickly. It is not meant to be a comprehensive or optimized workflow for all types of proteomics data analysis. Depending on your specific research question and data, you may need to adjust the code, add additional steps for data processing verification, like normalization efficiency and imputation bias, or use different statistical methods. Always critically evaluate the results and consider consulting with a statistician or bioinformatician if you're unsure about any aspect of the analysis.

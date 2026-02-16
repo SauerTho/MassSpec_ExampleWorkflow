@@ -8,7 +8,7 @@ This guide gets you into analyzing DIA-NN proteomics data using R.
 
 ## Step 1: Download and Open
 
-1. Download latest repository version by clicking the green">Code</code> button and selecting "Download ZIP".
+1. Download latest repository version by clicking the <span style="color:green">Code</span> button and selecting "Download ZIP".
 2. Unzip to a folder of your choice.
 3. Open RStudio -> File -> Open Projects in New Session -> select `MassSpec_ExampleWorkflow.Proj`.
 
@@ -19,7 +19,7 @@ MassSpec_ExampleWorkflow/
 ├── MassSpec_ExampleWorkflow.Rproj     # Open this!
 ├── MS Data Analysis Workflow.Rmd      # Main script
 ├── InputData/
-│   ├── Example_Raw_Data/              # Subset parquet
+│   ├── Example_Raw_Data/              # Subset .parquet file (DIA-NN Output)
 │   └── Example_Meta_Data/
 │       └── Example_meta.csv           # Sample → group mapping
 ├── OutputData/                        # Generated here (empty initially)

@@ -8,7 +8,7 @@ This guide gets you into analyzing DIA-NN proteomics data using R.
 
 ## Step 1: Download and Open
 
-1. Download latest repository version by clicking the green "Code" button and selecting "Download ZIP".
+1. Download latest repository version by clicking the <mark style="background-color: #51bc62; color: #F2F0EF;">Code</mark> button and selecting "Download ZIP".
 2. Unzip to a folder of your choice.
 3. Open RStudio -> File -> Open Projects in New Session -> select `MassSpec_ExampleWorkflow.Proj`.
 

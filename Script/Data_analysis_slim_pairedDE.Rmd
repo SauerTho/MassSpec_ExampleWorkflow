@@ -48,8 +48,18 @@ The DIA-NN raw output was processed using the corresponding R-package. A unique 
 ##load the diann output and calculate protein quantities
 ########################################################
 #load the diann output (this can be very large and therefore can take some time)
-####!!!!ADJUSTMENT NEEDED: define filepath!!!!!
-df <- read_parquet("./InputData/Example_Raw_Data/MassSpec_diaPASEF_90SPD_BxPC3_Panc1_sub.parquet")  #use this function if you have .parquet fileformat (DIA-NN version 2.0+)
+#Option A: subsetted dataset for improved runtimes, included in repo
+df <- read_parquet("./InputData/Example_Raw_Data/MassSpec_diaPASEF_90SPD_BxPC3_Panc1_sub.parquet") ####!!!!ADJUSTMENT NEEDED FOR OWN DATA: define filepath!!!!!
+
+#Option B: Full dataset (105 mb, from Nextcloud, increased runtimes)
+#download file from Nextcloud by uncommenting the following code. The file willd be downloaded to the defined filepath and loaded as df. Make sure to adjust the filepath to your needs. The code checks if the file already exists, and if not, it will download it. This is to avoid downloading the file multiple times if you run the script multiple times.
+#data_file <- "./InputData/Example_Raw_Data/MassSpec_diaPASEF_90SPD_BxPC3_Panc1_full.parquet"
+#if (!file.exists(data_file) && grepl("full", data_file, fixed = TRUE)) {
+#  full_url <- "https://cloud.oxygin.net/s/QCCXePLWHbQNzKj"
+#  cat("Downloading full dataset (~105 MB)...\n")
+#  download.file(full_url, data_file, mode = "wb", quiet = FALSE)
+#  }
+#df <- read_parquet(data_file)
 
 ##get unique proteins from output by using proteotypic peptides
 unique.proteins <- diann_maxlfq(df[df$Lib.Q.Value <= 0.01 & df$Lib.PG.Q.Value <= 0.01 & df$Proteotypic >= 1,], group.header="Genes", id.header = "Genes.MaxLFQ.Unique", sample.header = "Run") #we apply a FDR cutoff of 1% for both peptides and proteins, and require that the peptides used for quantification are proteotypic
@@ -89,9 +99,13 @@ sample.names %<>% str_split_i("_S1|_S2|_S3|_S4|_S5|_S6", i = 1) #split by common
 data <- unique.filtered
 colnames(data) <- c("Genes", sample.names) #rename columns
 
+#for later steps we need the sample to group/condition mapping which should be stored in a meta file
+####!!!!ADJUSTMENT NEEDED: define filepath!!!!!
+meta <- read.csv("./InputData/Example_Meta_Data/Example_meta.csv", header = TRUE, sep = ",") #load the mapping file
+
 
 #remove all unnecessary object to keep Environment clean
-rm(list=ls()[! ls() %in% c("data")]) 
+rm(list=ls()[! ls() %in% c("data", "meta")]) 
 ```
 
 ```{r}
@@ -101,29 +115,68 @@ rm(list=ls()[! ls() %in% c("data")])
 #This step will check, whether some columns are low in protein IDs and maybe should be removed.
 ##If samples are below the specified threshold (e.g. 50%) IDs, a warning will be displayed below this code-chunk.
 
-check_valids <- function(data, threshold = .5) { #define a function that checks for low ID samples
+check_valids <- function(data, meta, threshold = .5) {
   n_rows <- nrow(data)
+  sample_cols <- setdiff(colnames(data), "Genes")
   
-  #calculate the proportion of non_NA values per column
-  low_valid_cols <- data %>%
-    summarise(across(everything(), ~ sum(!is.na(.x)) / n_rows)) %>%
-    pivot_longer(everything(), names_to = "Sample", values_to = "valid_ratio") %>%
-    filter(valid_ratio < threshold)
+  # Absolute protein counts per sample (no ratios in plot)
+  valid_summary <- data %>%
+    summarise(across(all_of(sample_cols), ~ sum(!is.na(.x)))) %>%
+    pivot_longer(everything(), names_to = "samples", values_to = "n_proteins") %>%
+    left_join(meta, by = "samples") %>%
+    mutate(
+      valid_ratio = n_proteins / n_rows,  # For threshold only
+      below_threshold = valid_ratio < threshold
+    ) %>%
+    arrange(desc(n_proteins))
   
-  #generate a warning if any columns have low valid values
-  if (nrow(low_valid_cols) > 0){
-    
-      warning("WARNING: The following samples have less than 50% valid values: ", paste(low_valid_cols$Sample, collapse = ", "))
+  # Warning
+  low_ids <- valid_summary %>%
+    filter(below_threshold) %>%
+    pull(samples)
+  
+  if (length(low_ids) > 0){
+    warning("WARNING: Samples with <", threshold*100, "% proteins: ", 
+            paste(low_ids, collapse = ", "))
+  }
+  
+  # Plot: ABSOLUTE protein counts, condition-colored
+  p <- valid_summary %>%
+    ggplot(aes(x = reorder(samples, n_proteins), y = n_proteins, 
+               fill = condition, alpha = below_threshold)) +
+    geom_col(width = 0.8) +
+    geom_hline(yintercept = threshold * n_rows, linetype = "dashed", 
+               color = "firebrick", linewidth = 1, alpha = 1) +
+    coord_flip() +
+    scale_alpha_manual(values = c("FALSE" = 1, "TRUE" = 0.7), guide = "none") +
+    labs(
+      title = "Proteins Identified per Sample",
+      subtitle = paste("Red line:", round(threshold * n_rows), "proteins (", 
+                      threshold*100, "% of", n_rows, "total)"),
+      x = "Sample", y = "Proteins Identified",
+      caption = paste("Low-ID samples:", sum(valid_summary$below_threshold))
+    ) +
+    theme(axis.text.y = element_text(size = 9))
+  
+  print(p)  # Force display in Rmd
+  
+  return(valid_summary)
 }
-}
-check_valids(data) #run the function
+
+qc_res <- check_valids(data, meta) #run the function
+
 
 ## In case of a warning and if some samples should be removed, uncomment (remove "#") the following code and specify the columns that should be removed by their column name.
 
-#data %<>% dplyr::select(-Col2remove1, -Col2remove2, -Col2remove3, ...)
+# samples2kick <- qc_res %>% filter(below_threshold) %>% pull(samples)
+# data <- data %>% dplyr::select(Genes, all_of(setdiff(colnames(data), samples2kick)))
+# meta <- meta %>% filter(!samples %in% samples2kick)
+# cat("Removed", length(samples2kick), "samples: ", paste(samples2kick, collapse = ", "))
+
+## NOTE: In these training/example data, one sample is flagged as low-ID. However, this is due to reducing the size of the training dataset. You can decide wheter to keep it or not. In the full dataset, the sample is not flagged as low-ID, as it contains more proteins.
 
 #remove all unnecessary object to keep Environment clean
-rm(list=ls()[! ls() %in% c("data")])
+rm(list=ls()[! ls() %in% c("data", "meta", "qc_res")])
 ```
 
 The prepared dataset contains MaxLFQ intensities for **`r nrow(data)`** proteins and **`r ncol(data)-1`** samples.

@@ -45,7 +45,7 @@ The workflow is organized as R-Markdown file, which combines code and narrative 
 1. *Data_analysis_slim.Rmd*: A streamlined version of the workflow that includes unpaired statistical analysis, which is suitable for comparing independent groups (e.g., treatment vs. control). This script will perform unpaired limma.
 2. *Data_analysis_slim_paired.Rmd*: A version of the workflow that includes paired statistical analysis, which is useful when you have matched samples (e.g., before and after treatment from the same subjects). This script will perform paired limma. Preprocessing is analogous to 1.
 
-Open a script within RStudio by clicking it within your file explorer. Executable code is written in chunks, initiated by lines starting with ````{r}.` Run each code chunk individually by clicking the green triangle next to it, or you can run the entire document by clicking "Run" -> "Run All". Everything outside the chunks is narrative text that explains the code and results. This is very handy for documenting your analyses and insights.
+Open a script within RStudio by clicking it within your file explorer. Executable code is written in chunks, initiated by lines starting with ` ```{r} `. Run each code chunk individually by clicking the green triangle next to it, or you can run the entire document by clicking "Run" -> "Run All". Everything outside the chunks is narrative text that explains the code and results. This is very handy for documenting your analyses and insights.
 
 You can also generate a nicely formatted HTML report by clicking "Knit" -> "Knit to HTML". This will execute all code chunks and compile the results into a single, easy-to-read report, which will be saved in the Scripts' location.
 

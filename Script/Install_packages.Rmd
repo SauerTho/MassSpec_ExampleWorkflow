@@ -1,0 +1,24 @@
+# Install packages 
+
+```{r}
+#packages from CRAN
+install.packages("devtools")
+install.packages("tidyverse")
+install.packages("magrittr")
+install.packages("ggpubr")
+install.packages("sjmisc")
+install.packages("ggalt")
+install.packages("ggrepel")
+install.packages("DT")
+install.packages("arrow")
+install.packages("missForest")
+install.packages("rmdformats")
+
+#packages from Bioconductor
+BiocManager::install("limma")
+BiocManager::install("proDA")
+
+#packages from GitHub
+install_github("https://github.com/vdemichev/diann-rpackage")
+```
+

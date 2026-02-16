@@ -1,0 +1,422 @@
+---
+title: "MS Data Analysis Workflow"
+date: "`r Sys.Date()`"
+output:
+  rmdformats::robobook:
+    code_folding: hide
+    self_contained: true
+    lightbox: true
+    gallery: true
+---
+
+```{r, warning =FALSE, echo = FALSE, message = FALSE}
+
+#install.packages("rmdformats") #run once, then comment out
+
+library(devtools) #for install run: install.packages("devtools")
+library(diann) #for install run: install_github("https://github.com/vdemichev/diann-rpackage")
+library(tidyverse) #for install run: install.packages("tidyverse")
+library(magrittr) #for install run: install.packages("magrittr")
+library(limma) #for install run: BiocManager::install("limma")
+library(ggpubr) #for install run: install.packages("ggpubr")
+library(proDA) #for install run: BiocManager::install("proDA")
+library(imputeLCMD) #for install run: install.packages("imputeLCMD")
+library(sjmisc) #for install run: install.packages("sjmisc")
+library(ggalt) #for install run: install.packages("ggalt")
+library(limma) #for install run: BiocManager::install("limma")
+library(ggrepel) #for install run: install.packages("ggrepel")
+library(DT) #for install run: install.packages("DT")
+library(arrow) #for install run: install.packages("arrow")
+
+#general settings
+knitr::opts_chunk$set(echo = FALSE) #omits code when knitting to html document
+set.seed(1337) #this makes results (e.g imputation) reproducible
+```
+
+This script will handle the processing of a DIA-NN output file, transform the search engine output to a unique *protein quantity matrix*, perform basic *preprocessing* to make the data ready for further analysis.
+Furthermore, it includes basic principle component analysis *(PCA)* clustering and differential expression analysis.
+
+**Example Data:**
+The example data used in this script are diaPASEF data acquired with a timsTOF Flex HT from two pancreatic cancer cell lines (BxPC3 and PanC1) with 65replicates each. The data were acquired on an EvoSep One LC system using a 90 SPD method. The DIA-NN output was generated using DIA-NN version 2.0 with a spectral library generated from the same data using DIA-NN's library-free search option.
+
+# Processing DIA-NN Output
+
+The DIA-NN raw output was processed using the corresponding R-package. A unique protein (proteotypic peptides only) output was generated utilizing MaxLFQ intensities and applying a 1% FDR cutoff for both peptides and proteins. Proteins identified by just one peptide were removed from the dataset.
+
+```{r, warning = FALSE, message = FALSE}
+########################################################
+##load the diann output and calculate protein quantities
+########################################################
+#load the diann output (this can be very large and therefore can take some time)
+####!!!!ADJUSTMENT NEEDED: define filepath!!!!!
+df <- read_parquet("./InputData/Example_Raw_Data/MassSpec_diaPASEF_90SPD_BxPC3_Panc1_sub.parquet")  #use this function if you have .parquet fileformat (DIA-NN version 2.0+)
+
+##get unique proteins from output by using proteotypic peptides
+unique.proteins <- diann_maxlfq(df[df$Lib.Q.Value <= 0.01 & df$Lib.PG.Q.Value <= 0.01 & df$Proteotypic >= 1,], group.header="Genes", id.header = "Genes.MaxLFQ.Unique", sample.header = "Run") #we apply a FDR cutoff of 1% for both peptides and proteins, and require that the peptides used for quantification are proteotypic
+unique.proteins %<>% as.data.frame() %>% rownames_to_column(var = "Genes") #transform the datamatrix to a dataframe for easy handling with tidyverse functions
+
+########################################################
+##remove proteins identified by just one peptide
+########################################################
+#remove proteins identified by just one peptide: for this, first extract the proteins that were identified by just one peptide 
+##first extract unique peptides with applied FDR criteria
+pep <- unique(df[df$Lib.Q.Value <= 0.01 & df$Lib.PG.Q.Value <= 0.01 & df$Proteotypic >= 1, c('Stripped.Sequence', 'Genes')])
+
+##then count peptides per protein and filter for those with exaclty one peptide
+single_peps <- pep %>% 
+  count(Genes) %>%
+  filter(n == 1) %>%
+  select(Genes)
+
+#filter out proteins identified by just one peptide
+unique.filtered <- unique.proteins %>% filter(!Genes %in% single_peps$Genes) #filter out proteins identified by just one peptide
+
+########################################################
+##adjust sample names for easy usage
+########################################################
+#sample names (column names of unique.filtered) are the full file paths of the corresponding raw files, and the sample names are typically burried inside. We extract the sample names and use them as column names
+## For this, we have many options, but splitting the file path by common prefixes and suffixes is a robust way to extract the sample names
+
+### !!! However, this might need ADJUSTMENT, as it is not guaranteed that your file paths prefixes and suffixes match the ones used here!!!
+# 1.we extract the sample names and store them in a vector
+# 2. we use str_split_i to split the file paths by common prefixes: the string between "" is the common prefix that is removed from the file paths, i =2 means that everything after the prefix is kept
+# 3. S1 or S2 is the rack position on the EVOSEP, which always follow the sample name. We remove this information by splitting the string at the position of S1 or S2 and keeping everything before that
+sample.names <- unique.filtered %>% dplyr::select(-Genes) %>% colnames() #get names
+sample.names %<>% str_split_i("TCIPA_", i = 2) #split by common prefix
+sample.names %<>% str_split_i("_S1|_S2|_S3|_S4|_S5|_S6", i = 1) #split by common suffix
+
+##create new df using unique.filtered and add new samples names
+data <- unique.filtered
+colnames(data) <- c("Genes", sample.names) #rename columns
+
+
+#remove all unnecessary object to keep Environment clean
+rm(list=ls()[! ls() %in% c("data")]) 
+```
+
+```{r}
+########################################################
+##QC: Check for low ID samples
+########################################################
+#This step will check, whether some columns are low in protein IDs and maybe should be removed.
+##If samples are below the specified threshold (e.g. 50%) IDs, a warning will be displayed below this code-chunk.
+
+check_valids <- function(data, threshold = .5) { #define a function that checks for low ID samples
+  n_rows <- nrow(data)
+  
+  #calculate the proportion of non_NA values per column
+  low_valid_cols <- data %>%
+    summarise(across(everything(), ~ sum(!is.na(.x)) / n_rows)) %>%
+    pivot_longer(everything(), names_to = "Sample", values_to = "valid_ratio") %>%
+    filter(valid_ratio < threshold)
+  
+  #generate a warning if any columns have low valid values
+  if (nrow(low_valid_cols) > 0){
+    
+      warning("WARNING: The following samples have less than 50% valid values: ", paste(low_valid_cols$Sample, collapse = ", "))
+}
+}
+check_valids(data) #run the function
+
+## In case of a warning and if some samples should be removed, uncomment (remove "#") the following code and specify the columns that should be removed by their column name.
+
+#data %<>% dplyr::select(-Col2remove1, -Col2remove2, -Col2remove3, ...)
+
+#remove all unnecessary object to keep Environment clean
+rm(list=ls()[! ls() %in% c("data")])
+```
+
+The prepared dataset contains MaxLFQ intensities for **`r nrow(data)`** proteins and **`r ncol(data)-1`** samples.
+
+# Pre-processing
+In this section, we will perform basic preprocessing on the data, which includes filtering for completeness, normalization and imputation of remaining missing values.
+
+* Filtering: We applied a condition-based filtering, meaning that a protein has to be identified in at least 80% of the samples in at least one group to be retained for further analysis. This ensures that proteins that are only identified in one group but not in the other are retained for further analysis. Making the filtering group size dependent ensures identical stringency for groups of different sizes.
+
+* Normalization: We applied median normalization to the data.
+
+* Imputation: **Random forest-based** imputation was performed using the missForest R package. Missing values were imputed using the missForest function with default parameters. 
+
+
+```{r, warning = FALSE}
+########################################################
+##Filtering for completeness
+########################################################
+#for this step we need the sample to group/condition mapping which should be stored in a meta file
+####!!!!ADJUSTMENT NEEDED: define filepath!!!!!
+meta <- read.csv("./InputData/Example_Meta_Data/Example_meta.csv", header = TRUE, sep = ",") #load the mapping file
+
+## We will apply a condition filter: A protein has to be identified in a certain fraction of samples per group to be included.
+# Define filter threshold (e.g., 0.8 for 80%)
+filter_threshold <- 0.8 #threshold of group completeness to reach for a protein to be kept, could be adjusted depending on desired stringency
+
+# Pivot data longer for easier joining with meta
+long_data <- data %>%
+  pivot_longer(cols = -Genes, names_to = "samples", values_to = "intensity")
+
+# Join with group meta info to bring in the condition/group information
+long_data <- long_data %>%
+  left_join(meta, by = "samples")
+
+# Flag non-missing quantification
+long_data <- long_data %>%
+  mutate(present = !is.na(intensity))
+
+# Summarize within each protein/group combination
+group_summary <- long_data %>%
+  group_by(Genes, condition) %>%
+  summarise(
+    n_present = sum(present),
+    n_total = n(),
+    prop_present = n_present / n_total,
+    .groups = "drop"
+  )
+
+# Only keep proteins present in >= filter_threshold of samples in any group
+proteins_to_keep <- group_summary %>%
+  filter(prop_present >= filter_threshold) %>%
+  pull(Genes) %>%
+  unique()
+
+# Filter the original data
+filtered_data <- data %>% dplyr::filter(Genes %in% proteins_to_keep) #filter the data to only include proteins that are in the proteins_to_keep vector
+data <- filtered_data #set data to filtered data
+
+########################################################
+##Normalization
+########################################################
+#We will apply median Normalization on the data
+data %<>% 
+      column_to_rownames(var = "Genes") %>% #the normalization function expects a matrix with rownames, so we use genes as rownames
+        as.matrix() %>% #transform to matrix object
+         log(base = 2) %>% #log2 transformation
+           proDA::median_normalization() %>% #perform the normalization
+            as.data.frame() %>% #transform back to dataframe
+              rownames_to_column(var = "Genes") #add genes as column instead of rownames
+
+
+########################################################
+##Imputation
+########################################################
+
+#missForest is used for random forest based imputation
+data_imputed <- data %>% rotate_df(cn = TRUE) %>% as.matrix() %>%
+missForest::missForest()
+
+data <- data_imputed[["ximp"]] %>% as.data.frame() %>% sjmisc::rotate_df(cn = FALSE) %>% rownames_to_column(var = "Genes") #transform back to dataframe
+
+write.csv(data, file = "./OutputData/Processed_Data.csv", row.names = FALSE) #write processed data to file
+
+DT::datatable(data, extensions = 'Buttons',
+                      caption = "Pre-processed proteomics data.",
+                      options = list(dom = 'Blfrtip',
+                                     buttons = c('copy', 'csv', 'excel')
+                      ))
+
+
+rm(list=ls()[! ls() %in% c("data")]) 
+```
+
+
+
+# Clustering
+In this section, we will perform a basic principle component analysis (PCA) to visualize the data structure. The PCA will be performed on the processed data.
+Each point in the plot resembles a sample.
+
+PCA (principal component analysis) is a technique used to reduce the dimensionality of high-dimensional data by projecting it onto a lower-dimensional space. In other words, PCA helps to identify the most important features (or "components") of a dataset, and then create a new set of variables that capture most of the variation in the data. PCA clustering, therefore, is the process of using PCA to cluster data points based on their similarity in the reduced feature space. The PCA algorithm works by finding a linear transformation that maps the original data onto a new coordinate system where the first principal component (PC), captures the direction of maximum variance, the second PC captures the direction of the second-highest variance, and so on. Once the PCs are identified, the data can be projected onto the PC space, usually with PC1 on the X-, and PC2 on the Y-axis.
+
+```{r}
+########################################################
+##Data preparation
+########################################################
+
+#For the clustering analysis, we need the sample to group mapping information.
+#Make sure that the sample names in the mapping file match the sample names in the processed data!
+meta <- read.csv("./InputData/Example_Meta_Data/Example_meta.csv", header = TRUE, sep = ",") #load the mapping file
+
+##The PCA function requires the data with samples in rows and features in columns, so first we transpose the data. Furthermore, it requires rownames.
+data_t <- data %>% rotate_df(cn = 1)
+
+#compute the Principal components
+PC <- prcomp(data_t, center = TRUE, scale = FALSE) #perform PCA
+PCA_df <- as.data.frame(PC$x) #transform the PCA results to a dataframe
+PCA_df %<>% rownames_to_column(var = "samples") %>% dplyr::select(samples, PC1, PC2) #add sample names as column and keep only the first two PCs
+
+#calculate the percentage of explained variance by each PC. This is important for the Axis labels
+explained_variance <- PC$sdev^2 / sum(PC$sdev^2) * 100 #calculate the explained variance
+pc1_variance <- round(explained_variance[1], 2) #extract for PC1
+pc2_variance <- round(explained_variance[2], 2) #extract for PC2
+
+#merge the PCA results with the metadata
+PCA_df <- merge(PCA_df, meta, by = "samples")
+
+########################################################
+##Plot preparation
+########################################################
+
+PCA_df %>%
+  ggplot(aes(x = PC1, y = PC2, col = condition, fill = condition)) + #define the plots aesthetics
+  geom_encircle(expand = 0, alpha = .5, s_shape = 1, size = 1.5, spread = 0.0001) + #this function is used to enframe samples of the same category
+  geom_point(size = 2) + #add the geom_point to create a scatter plot
+  ggtitle("PCA Plot", subtitle = str_c("Input proteins: ", nrow(data))) + #add title and subtitle
+  labs(x = sprintf("PC1 (%s%% variance)", pc1_variance), ## add variance explained as axis labels 
+       y = sprintf("PC2 (%s%% variance)", pc2_variance)) +
+  geom_text_repel(aes(label = replicate), box.padding = 0.5, point.padding = 0.5, col = "grey33", size = 3) #add replicates to the plot, if desired.
+
+
+rm(list=ls()[! ls() %in% c("data", "meta")]) 
+```
+
+
+# Differential Expression Analysis for paired setups
+
+The R package [Limma](https://academic.oup.com/nar/article/43/7/e47/2414268) (linear models for Microarray and RNA-Seq Data) was initially written for differential expression analysis for RNA-sequencing and microarray data. However, the underlying principles and especially the code is also useful for proteomics data.
+
+limma is a *moderated* statistical test, which means that it adjusts the estimates of the test statistic to account for the degree of variability in the data. The purpose of moderation is to improve the accuracy and stability of the estimates, particularly in cases where the sample size is small or the data are noisy.
+
+To test for differential expression, limma fits the GLM to the data and then uses empirical Bayes method for stabilizing the estimates of the coefficients in the limma model. The rationale behind using the empirical Bayes method stems from the fact that the *sample variance* is not an efficient statistic, which means that it takes a certain number of observations before the sample variance converges towards the true underlying variance that we are trying to estimate. In many omics experiments, we have far fewer observations than necessary to get a good estimate of the variance. The empirical Bayes method aims to improve the precision of this estimate. This is done by calculating an *expected variance* that has a higher probability of being representative of the true underlying variance, and then adjust the observed variance towards the expected variance. In simple terms, first an average variance, based on all genes/proteins in the matrix, is calculated (which will be more accurate as it is based on much more data), then for each gene/protein a sample variance is computed which is in turn adjusted towards the expected variance.
+
+This script will perform a differential expression analysis for a **paired setup**. This means that the samples are paired, and the analysis will test for differences between the paired samples, which will increase the statistical power of the test.
+
+
+```{r, warning = FALSE}
+########################################################
+##Data preparation
+########################################################
+#for easy mapping, we ensure the that the order of samples in 'data' is the same as in the 'meta' object. This may already be the case, but this will ensure the order, which is very important.
+data.lm <- data %>% dplyr::select(Genes, str_c(meta$condition, "_", meta$replicate))
+
+#limma requires a data matrix as input, so we create a matrix object from data.lm
+mat <- data.lm %>% column_to_rownames(var = "Genes") %>% as.matrix()
+
+
+#pairing information needs to be included within the design matrix using factors
+#!!NOTE that the pairing for the example date is entirely made up, and only serves as an example for the code. We use the replicate variable as dummy pairing information. In a real experiment, the pairing information should be based on the experimental setup!!
+
+#build the factors with information on pairs and group
+pairs <- factor(meta$replicate) #this is the pairing information
+group <- factor(meta$condition, levels = c("PanC1", "BxPC3")) #this is the group information, mention each group in in the levels argument
+
+#we need to create a design matrix for limma. The design matrix is a matrix that describes the experimental design of the experiment. It is used to model the relationship between the samples and the conditions and in this case, pairs.
+design <- model.matrix(~pairs+group) #create the design matrix
+
+
+########################################################
+##Fit the model
+########################################################
+
+#We now use this design matrix along with the expression data stored in mat to fit the linear model required for DEA
+fit <- lmFit(mat, design)
+
+#apply empirical Bayesian method on the fit object
+efit <- eBayes(fit, trend = TRUE, robust = TRUE)
+
+#extract contrast/coefficient name from design matrix (last column)
+contrast <- design %>% colnames() %>% tail(1) %>% as.character()
+
+#extract the unfiltered limma results as dataframe, thereby applying Benjamini-Hochberg correction for multiple testing
+df.limma <- topTable(efit, coef = contrast, adjust = "BH", sort.by = "P", number = Inf, p.value = 1, lfc = NULL) %>% rownames_to_column(var = "Gene.Symbol")
+
+
+## include the results table as interactive table
+df.limma %>% format(df.limma$P.Value, scientific = TRUE) %>% format(df.limma$adj.P.Val, scientific = TRUE) %>%
+DT::datatable(extensions = 'Buttons',
+                options = list("dom" = 'Blfrtip',
+                               buttons = c('copy', 'csv', 'excel')),
+                caption = "Differential expression analysis results")
+
+```
+
+
+<!--
+!!!!!!!! ADJUSTMENT NEEDED: Copy the section below for as many contrasts as you have in your analysis. Make sure to adjust the contrast name in the code chunk below and in the subsequent sections. The contrast name has to match the contrast names defined in the contrast matrix. !!!!!!!! 
+-->
+
+## BxPC3 vs PanC1
+
+### Differential Expression {.tabset .tabset-fade .tabset-pills}
+
+#### Volcano Plot
+
+```{r, echo = FALSE, warning = FALSE}
+########################################################
+##Data preparation
+########################################################
+#This will create all the data needed for the volcano plot
+
+## These values will define the classification of proteins as significant or not and will be used as cutoff for threshold lines in the volcano plots
+pos_FC <- 1 #positive log2FC threshold
+neg_FC <- -1 #negative log2FC threshold
+pcut <- 0.05 #p-value of posthoc threshold
+
+#this will get the group labels in the plot right
+groups <- levels(group)
+group1 <- groups[2] #this defines group 1, for up/down regulation annotation
+group2 <- groups[1] #this defines group 2, for up/down regulation annotation
+title <- str_c(group1, " vs. ", group2) #This will create a title string for the plot
+
+#add a column that indicates the differential expression
+df.limma %<>%  mutate(diffexpressed = case_when(logFC >= pos_FC&adj.P.Val <= pcut ~ 'Up', logFC <= neg_FC&adj.P.Val <= pcut ~ 'Down', logFC <= pos_FC | logFC >= neg_FC ~ 'NotSig'))
+
+#create DF with significant proteins only
+sig <- df.limma %>% filter(diffexpressed != "NotSig") #This is important for the generation of labels
+
+##generate labels for the volcano plot
+up <- "Up in"
+down <- "Down in"
+uplabel <- str_c(up, group1, sep = " ") 
+downlabel <- str_c(down, group1, sep = " ")
+subtitle <- str_c(nrow(sig), " differentially expressed proteins.")
+caption <- str_c(length(levels(pairs)), " vs. ", length(levels(pairs)), " samples") #caption for the plot, specifying the group sizes
+
+##automated positioning of text labels regarding up/down regulation in the volcano plot
+side_decision <- if(abs(max(df.limma$logFC, na.rm = TRUE)) < abs(min(df.limma$logFC, na.rm = TRUE))) "right" else "left" #the side with the smaller absolute logFC decides the x- positioning of the text labels
+label_value <- if(side_decision == "right") max(df.limma$logFC, na.rm = TRUE) else min(df.limma$logFC, na.rm = TRUE) #the value of the logFC that decides the x- positioning of the text labels
+label_value <- label_value/2 #this will position the text labels at 1/2 of the plot width of the shorter x-saxis side
+text_x <- abs(label_value)
+text_negx <- -abs(label_value)
+
+########################################################
+##Plot preparation
+########################################################
+#First create an ggplot object with the basic aesthetics
+plot <- df.limma %>%
+  ggplot(mapping = aes(x=logFC, y=-log10(adj.P.Val), color=diffexpressed, alpha = diffexpressed)) +
+  geom_point() +
+  scale_alpha_manual(guide = 'none', values = c(Down = 1, Up = 1, NotSig = .4)) + #This regulates the density of the points. The higher the value, the more dense the color
+  geom_vline(xintercept=c(neg_FC, pos_FC), col="black", linetype="dashed") + #add vertical lines for log2FC thresholds
+  geom_hline(yintercept=-log10(pcut), col="black", linetype="dashed") + #add horizontal line for p-value threshold
+  scale_color_manual(breaks = c("Down", "NotSig", "Up"), values = c("#440F76FF", "grey56", "#ED5A5FFF"))+ #color the points, depending on the differential expression
+  ylab(bquote(~-log[10]~"q-value limma")) + #add y-axis label 
+  #ylim(0, y_limmax)+ #set y-axis limits
+  xlab(bquote(~log[2]~"Fold Change")) + #add x-axis label
+  #xlim(x_lim_neg, x_lim_pos) + #set x-axis limits
+  labs(title = title, subtitle = subtitle, caption = caption
+  ) + #add title and subtitle
+  theme(legend.position="bottom") + #fix legend at bottom of the plot
+  annotate("text", x=text_x, y=0, label = uplabel, col = "grey56")+ #add annotation for upregulation
+  annotate("text", x=text_negx, y=0, label = downlabel, col = "grey56") #add annotation for downregulation
+plot + geom_text_repel(
+  data = sig,
+  aes(label = Gene.Symbol),
+  color = "grey28",
+  size = 2.5
+)
+
+```
+
+#### DE Table
+
+```{r, echo = FALSE, warning = FALSE}
+#This table will show the significant proteins only
+sig %<>% mutate(Euclid.dist = sqrt((logFC^2 + log(adj.P.Val, 10)^2)), .after = logFC) %>% arrange(desc(Euclid.dist))
+
+sig %>% #format(sig$P.Value, scientific = TRUE) %>% format(sig$P.value.adj, scientific = TRUE) %>%
+DT::datatable(extensions = 'Buttons',
+                options = list("dom" = 'Blfrtip',
+                               buttons = c('copy', 'csv', 'excel')),
+                caption = 'Significant Proteins') %>%
+  DT::formatRound(columns = c("logFC", "t", "Euclid.dist"), digits = 3)
+
+```
+

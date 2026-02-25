@@ -24,7 +24,6 @@ library(DT) #for install run: install.packages("DT")
 library(arrow) #for install run: install.packages("arrow")
 library(missForest) #for install run: install.packages("missForest")
 library(clusterProfiler) #for install run: BiocManager::install("clusterProfiler")
-library(msigdbr) #for install run: install.packages("msigdbr")
 
 #general settings
 knitr::opts_chunk$set(echo = FALSE) #omits code when knitting to html document

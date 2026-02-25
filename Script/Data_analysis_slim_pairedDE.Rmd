@@ -10,9 +10,6 @@ output:
 ---
 
 ```{r, warning =FALSE, echo = FALSE, message = FALSE}
-
-#install.packages("rmdformats") #run once, then comment out
-
 library(devtools) #for install run: install.packages("devtools")
 library(diann) #for install run: install_github("https://github.com/vdemichev/diann-rpackage")
 library(tidyverse) #for install run: install.packages("tidyverse")
@@ -20,17 +17,18 @@ library(magrittr) #for install run: install.packages("magrittr")
 library(limma) #for install run: BiocManager::install("limma")
 library(ggpubr) #for install run: install.packages("ggpubr")
 library(proDA) #for install run: BiocManager::install("proDA")
-library(imputeLCMD) #for install run: install.packages("imputeLCMD")
 library(sjmisc) #for install run: install.packages("sjmisc")
 library(ggalt) #for install run: install.packages("ggalt")
-library(limma) #for install run: BiocManager::install("limma")
 library(ggrepel) #for install run: install.packages("ggrepel")
 library(DT) #for install run: install.packages("DT")
 library(arrow) #for install run: install.packages("arrow")
+library(missForest) #for install run: install.packages("missForest")
+library(clusterProfiler) #for install run: BiocManager::install("clusterProfiler")
 
 #general settings
 knitr::opts_chunk$set(echo = FALSE) #omits code when knitting to html document
 set.seed(1337) #this makes results (e.g imputation) reproducible
+
 ```
 
 This script will handle the processing of a DIA-NN output file, transform the search engine output to a unique *protein quantity matrix*, perform basic *preprocessing* to make the data ready for further analysis.

@@ -13,7 +13,6 @@ install.packages("DT")
 install.packages("arrow")
 install.packages("missForest")
 install.packages("rmdformats")
-install.packages("msigdbr")
 
 #packages from Bioconductor
 BiocManager::install("limma")

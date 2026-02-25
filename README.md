@@ -65,7 +65,7 @@ In the script, it's highlighted where you need to make adjustments to load your 
 
 ## Disclaimer
 
-This script is purposely made simple and straightforward to get your started quickly. It is not meant to be a comprehensive or optimized workflow for all types of proteomics data analysis. Depending on your specific research question and data, you may need to adjust the code, add additional steps for data processing verification, like normalization efficiency and imputation bias, or use different statistical methods. Always critically evaluate the results and consider consulting with a statistician or bioinformatician if you're unsure about any aspect of the analysis.
+This script is purposely made simple and straightforward to get you started quickly. It is not meant to be a comprehensive or optimized workflow for all types of proteomics data analysis. Depending on your specific research question and data, you may need to adjust the code, add additional steps for data processing verification, like normalization efficiency and imputation bias, or use different statistical methods. Always critically evaluate the results and consider consulting with a statistician or bioinformatician if you're unsure about any aspect of the analysis.
 
 ## Contact
 

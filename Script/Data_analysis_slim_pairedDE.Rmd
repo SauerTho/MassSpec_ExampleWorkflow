@@ -34,7 +34,7 @@ set.seed(1337) #this makes results (e.g imputation) reproducible
 ```
 
 This script will handle the processing of a DIA-NN output file, transform the search engine output to a unique *protein quantity matrix*, perform basic *preprocessing* to make the data ready for further analysis.
-Furthermore, it includes basic principle component analysis *(PCA)* clustering and differential expression analysis.
+Furthermore, it includes basic principle component analysis *(PCA)* clustering, differential expression analysis and Gene Set Enrichment Analysis *(GSEA)*.
 
 **Example Data:**
 The example data used in this script are diaPASEF data acquired with a timsTOF Flex HT from two pancreatic cancer cell lines (BxPC3 and PanC1) with 65replicates each. The data were acquired on an EvoSep One LC system using a 90 SPD method. The DIA-NN output was generated using DIA-NN version 2.0 with a spectral library generated from the same data using DIA-NN's library-free search option.
@@ -381,6 +381,17 @@ DT::datatable(extensions = 'Buttons',
 ```
 
 
+```{r}
+#In this code chunk, we create some plotting parameters that will the creation of comparable plots easier
+
+## These values will define the classification of proteins as significant or not and will be used as cutoff for threshold lines in the volcano plots
+pos_FC <- 1 #positive log2FC threshold
+neg_FC <- -1 #negative log2FC threshold
+pcut <- 0.05 #p-value of posthoc threshold
+p.GSEA <- 0.05 #p-value threshold for GSEA results
+
+```
+
 <!--
 !!!!!!!! ADJUSTMENT NEEDED: Copy the section below for as many contrasts as you have in your analysis. Make sure to adjust the contrast name in the code chunk below and in the subsequent sections. The contrast name has to match the contrast names defined in the contrast matrix. !!!!!!!! 
 -->
@@ -396,11 +407,6 @@ DT::datatable(extensions = 'Buttons',
 ##Data preparation
 ########################################################
 #This will create all the data needed for the volcano plot
-
-## These values will define the classification of proteins as significant or not and will be used as cutoff for threshold lines in the volcano plots
-pos_FC <- 1 #positive log2FC threshold
-neg_FC <- -1 #negative log2FC threshold
-pcut <- 0.05 #p-value of posthoc threshold
 
 #this will get the group labels in the plot right
 groups <- levels(group)
@@ -473,3 +479,216 @@ DT::datatable(extensions = 'Buttons',
 
 ```
 
+
+# GSEA 
+
+<details>
+  <summary>**Click here for GSEA background information**:</summary>
+
+Gene set enrichment analysis (GSEA) is a computational method used to analyze gene expression data to identify sets of genes or pathways that are differentially expressed between two or more groups of samples. In simple terms, GSEA works by comparing the expression of a predefined set of genes (called gene set) between groups of samples, such as healthy vs. diseased tissue. The gene set can represent a variety of biological functions, such as metabolic pathways, a signaling pathway, or a set of genes with a common function.
+GSEA assigns a score to each gene set based on the degree to which its members are overrepresented at the top or bottom of a ranked list of genes, which is typically ordered by the magnitude of the difference in expression between the two groups (here, we use the log fold change derived from differential expression analysis carried out before). If the genes in a gene set are mostly overrepresented at the top of the ranked list, this indicates that they are more highly expressed in one group compared to the other.
+The statistical significance of the scores is assessed by permuting the samples labels to generate a null distribution and calculating the false discovery rate (FDR) to control for multiple testing.
+
+It should be noted, that GSEA substantially differs from simple overrrepresentation analysis (*ORA*), which is also used to identify enriched gene sets in omics data. ORA is a statistical method that determines whether a gene set is overrepresented in a given dataset compared to what would be expected by chance. ORA typically uses statistical test or hypergeometric test to determine whether the number of genes in a gene set that are differentially expressed is significantly greater than would be expected by chance. Therefore, GSEA does not require pre-defined thresholds for determining differential expression, but instead, ranks all genes in a dataset based on their degree of their differential expression. GSEA assesses the enrichment of each gene set by calculating a running sum statistic that measures the degree of overrepresentation of the gene set in the ranked list of genes.The statistical significance of the running sum statistic is then evaluated using a permutation test. Another key difference between GSEA and ORA is that GSEA takes into account the entire distribution of gene expression changes rather than just the subset of genes that pass a significance threshold in the differential expression analysis. This approach can be more sensitive  to subtle changes in gene expression and can identify gene sets that would be missed by ORA.
+
+P-Values are corrected using the *Benjamini-Hochberg* method, significance is considered if **p-adj.(FDR) < `r p.GSEA`**.
+
+The analyses is carried with the R package 'clusterProfiler' [Yu, Wang, & He, 2012](https://www.liebertpub.com/doi/10.1089/omi.2011.0118) & [Wu, 2021](https://www.sciencedirect.com/science/article/pii/S2666675821000667?via%3Dihub). 
+
+Further reading:
+
+  * [Subramanian et al., 2005](https://pubmed.ncbi.nlm.nih.gov/16199517/)
+  * [Kathri, Sirota & Butte, 2012](https://pubmed.ncbi.nlm.nih.gov/22383865/)
+  * [Tarca et al. 2009](https://pubmed.ncbi.nlm.nih.gov/18990722/)
+  * [Huang, Sherman & Lempicki, 2009](https://pubmed.ncbi.nlm.nih.gov/19131956/)
+  
+</details>
+
+
+**Disclaimer:** The GSEA suffers from the reduced dataset size described in the beginning. The unspecific filtering really dismantles the biological information in the data, which is why the GSEA results are not very meaningful. However, the code is provided for demonstration purposes and can be applied to the full dataset without any adjustments.
+
+```{r echo = FALSE}
+## data prep ##
+res = df.limma
+
+# define the organism of the dataset
+#For GO analyses:
+#organism_GO = "org.Dm.eg.db" #drosophila melanogaster
+organism_GO = "org.Hs.eg.db" #Homo Sapiens
+#organism_GO = "org.Mm.eg.db" #Mus Musculus
+#More organisms available at: http://bioconductor.org/packages/release/BiocViews.html#___OrgDb
+
+#extract fold changes
+orig_gene_list <- res$logFC
+#name the vector
+names(orig_gene_list) <- res$Gene.Symbol
+#omit NAs
+gene_list <- na.omit(orig_gene_list)
+#sort decreasing order (prerequisite for clusterProfiler)
+gene_list = sort(gene_list, decreasing = TRUE)
+
+#generate labels for enrichment direction
+
+act_lab <- stringr::str_c("enriched in ", group1)
+sup_lab <- stringr::str_c("enriched in ", group2)
+
+```
+
+## Gene ontology {.tabset .tabset-fade .tabset-pills}
+
+### GO.BP
+[Gene Ontology Consortium](http://geneontology.org/) knowledgebase is the world’s largest source of information on the functions of genes. Here the larger processes, or ‘biological programs’ accomplished by multiple molecular activities are assessed.
+
+However, there a more subontologies available, which can be used for GSEA as well. These include: 'molecular function' & 'cellular component'.
+
+```{r echo = FALSE, fig.height = 7, fig.width = 12, eval = TRUE, error = TRUE, message = FALSE, warning = FALSE, eval = TRUE}
+
+#GO term Biological Process
+gseBP <- gseGO(geneList = gene_list, #gene_list contains genes and their log2FC values, which are used for ranking the genes in GSEA
+             ont = "BP", #specifies that the biological process ontology should be used for the analysis
+             keyType = "SYMBOL", #Gene symbols as input
+             pvalueCutoff = p.GSEA, #p-value threshold for significant enrichment
+             pAdjustMethod = "BH", #Benjamini-Hochberg correction for multiple testing
+             verbose = FALSE, #omit message printing
+             seed = TRUE, #consider random seed for reproducibility
+             OrgDb = organism_GO, #specifies the organism
+             eps = 1e-20) #a small number to prevent underflow when calculating p-values
+
+df.BP <- gseBP@result #extract results as data.frame
+rownames(df.BP) <- c() #remove rownames
+
+#generate a dataframe with top 10 positive and negative enrichments, selected by normalized enrichment score (NES)
+topBP <- full_join((df.BP %>% filter(NES >= 0) %>%
+                      slice_max(order_by = NES, n = 10)), (df.BP %>% filter(NES <= 0) %>% slice_min(order_by = NES, n = 10)))
+
+#generate a lollipop style plot
+ggplot(topBP, aes(x = reorder(Description, NES), y = NES, color = p.adjust)) + #define the plot aesthetics, reorder the x-axis by NES and color by adjusted p-value
+  geom_segment(aes(xend=Description, y=0, yend=NES), color = "grey", size = 2) + #add segments from y=0 to the NES value for each term, colored grey
+  geom_point(size = 4) + #add points at the end of the segments, size 4
+  coord_flip() + #flip the coordinates to make it horizontal
+  scale_x_discrete(labels=function(x) str_wrap(x, width=60)) + #wrap long x-axis labels to a width of 60 characters
+  theme(strip.text.x = element_text(size = 8)) + #adjust the size of the facet labels
+  labs(x = "", y = "Normalized enrichemnt score (NES)", subtitle = "Top 10 positive and negative enrichments selected by normalized enrichment score", title = "GO:Biological Process") + #add axis labels and title
+  annotate("text", nrow(topBP)+.4, y = max(topBP$NES)/3, label = act_lab, col = "grey10", size = 3, family = "IBMPlexSans") + #add annotation for the positive enrichment direction
+  annotate("text", nrow(topBP)+.4, y = min(topBP$NES)/3, label = sup_lab, col = "grey10", size = 3, family = "IBMPlexSans") #add annotation for the negative enrichment direction
+```
+
+
+```{r, echo = FALSE, eval = TRUE, error = TRUE}
+DT::datatable(df.BP %>% dplyr::select(-leading_edge, -core_enrichment), extensions = 'Buttons',
+                options = list(order = list(list(7 , 'asc')),
+                               "dom" = 'Blfrtip',
+                               buttons = c('copy', 'csv', 'excel')),
+                caption = 'Significant Proteins') %>%
+    DT::formatRound("enrichmentScore", digits=3) %>%
+    DT::formatRound("NES", digits=3) %>%
+    DT::formatSignif("pvalue", digits=5) %>%
+    DT::formatSignif("p.adjust", digits=5) %>%
+    DT::formatSignif("qvalue", digits=5)
+
+```
+
+
+### GO.MF
+[Gene Ontology Consortium](http://geneontology.org/) knowledgebase is the world’s largest source of information on the functions of genes. Here the molecular level activities performed by gene products are assessed.
+
+```{r, echo = FALSE, fig.height = 7, fig.width = 12, message = FALSE, warning = FALSE, error = TRUE, eval = TRUE}
+
+#GO term Molecular Function
+gseMF <- gseGO(geneList = gene_list, #gene_list contains genes and their log2FC values, which are used for ranking the genes in GSEA
+             ont = "MF", #specifies that the molecular function ontology should be used for the analysis
+             keyType = "SYMBOL", #Gene symbols as input
+             pvalueCutoff = p.GSEA, #p-value threshold for significant enrichment
+             pAdjustMethod = "BH", #Benjamini-Hochberg correction for multiple testing
+             verbose = FALSE, #omit message printing
+             seed = TRUE, #consider random seed for reproducibility
+             OrgDb = organism_GO, #specifies the organism
+             eps = 1e-20) #a small number to prevent underflow when calculating p-values
+
+df.MF <- gseMF@result #extract results as data.frame
+rownames(df.MF) <- c() #remove rownames
+
+#generate a dataframe with top 10 positive and negative enrichments, selected by normalized enrichment score (NES)
+topMF <- full_join((df.MF %>% filter(NES >= 0) %>%
+                      slice_max(order_by = NES, n = 10)), (df.MF %>% filter(NES <= 0) %>% slice_min(order_by = NES, n = 10)))
+
+#generate a lollipop style plot
+ggplot(topMF, aes(x = reorder(Description, NES), y = NES, color = p.adjust)) + #define the plot aesthetics, reorder the x-axis by NES and color by adjusted p-value
+  geom_segment(aes(xend=Description, y=0, yend=NES), color = "grey", size = 2) + #add segments from y=0 to the NES value for each term, colored grey
+  geom_point(size = 4) + #add points at the end of the segments, size 4
+  coord_flip() + #flip the coordinates to make it horizontal
+  scale_x_discrete(labels=function(x) str_wrap(x, width=60)) + #wrap long x-axis labels to a width of 60 characters
+  theme(strip.text.x = element_text(size = 8)) + #adjust the size of the facet labels
+  labs(x = "", y = "Normalized enrichemnt score (NES)", subtitle = "Top 10 positive and negative enrichments selected by normalized enrichment score", title = "GO:Molecular Function") + #add axis labels and title
+  annotate("text", nrow(topMF)+.4, y = max(topMF$NES)/3, label = act_lab, col = "grey10", size = 3, family = "IBMPlexSans") + #add annotation for the positive enrichment direction
+  annotate("text", nrow(topMF)+.4, y = min(topMF$NES)/3, label = sup_lab, col = "grey10", size = 3, family = "IBMPlexSans") #add annotation for the negative enrichment direction
+
+```
+
+
+```{r, echo = FALSE, eval = TRUE, error = TRUE}
+DT::datatable(df.MF %>% dplyr::select(-leading_edge, -core_enrichment), extensions = 'Buttons',
+                options = list(order = list(list(7 , 'asc')),
+                               "dom" = 'Blfrtip',
+                               buttons = c('copy', 'csv', 'excel')),
+                caption = 'Significant Proteins') %>%
+    DT::formatRound("enrichmentScore", digits=3) %>%
+    DT::formatRound("NES", digits=3) %>%
+    DT::formatSignif("pvalue", digits=5) %>%
+    DT::formatSignif("p.adjust", digits=5) %>%
+    DT::formatSignif("qvalue", digits=5)
+
+```
+
+### GO.CC
+[Gene Ontology Consortium](http://geneontology.org/) knowledgebase is the world’s largest source of information on the functions of genes. Here the the locations relative to cellular structures in which a gene product performs a function are assessed.
+
+```{r, echo = FALSE, fig.height = 7, fig.width = 12, message = FALSE, warning = FALSE, error = TRUE, eval = TRUE}
+
+#GO term Molecular Function
+gseCC <- gseGO(geneList = gene_list, #gene_list contains genes and their log2FC values, which are used for ranking the genes in GSEA
+             ont = "CC", #specifies that the cellular component ontology should be used for the analysis
+             keyType = "SYMBOL", #Gene symbols as input
+             pvalueCutoff = p.GSEA, #p-value threshold for significant enrichment
+             pAdjustMethod = "BH", #Benjamini-Hochberg correction for multiple testing
+             verbose = FALSE, #omit message printing
+             seed = TRUE, #consider random seed for reproducibility
+             OrgDb = organism_GO, #specifies the organism
+             eps = 1e-20) #a small number to prevent underflow when calculating p-values
+
+
+df.CC <- gseCC@result #extract results as data.frame
+rownames(df.CC) <- c() #remove rownames
+
+#generate a dataframe with top 10 positive and negative enrichments, selected by normalized enrichment score (NES)
+topCC <- full_join((df.CC %>% filter(NES >= 0) %>%
+                      slice_max(order_by = NES, n = 10)), (df.CC %>% filter(NES <= 0) %>% slice_min(order_by = NES, n = 10)))
+
+#generate a lollipop style plot
+ggplot(topCC, aes(x = reorder(Description, NES), y = NES, color = p.adjust)) + #define the plot aesthetics, reorder the x-axis by NES and color by adjusted p-value
+  geom_segment(aes(xend=Description, y=0, yend=NES), color = "grey", size = 2) + #add segments from y=0 to the NES value for each term, colored grey
+  geom_point(size = 4) + #add points at the end of the segments, size 4
+  coord_flip() + #flip the coordinates to make it horizontal
+  scale_x_discrete(labels=function(x) str_wrap(x, width=60)) + #wrap long x-axis labels to a width of 60 characters
+  theme(strip.text.x = element_text(size = 8)) + #adjust the size of the facet labels
+  labs(x = "", y = "Normalized enrichemnt score (NES)", subtitle = "Top 10 positive and negative enrichments selected by normalized enrichment score", title = "GO:Cellular Component") + #add axis labels and title
+  annotate("text", nrow(topCC)+.4, y = max(topCC$NES)/3, label = act_lab, col = "grey10", size = 3, family = "IBMPlexSans") + #add annotation for the positive enrichment direction
+  annotate("text", nrow(topCC)+.4, y = min(topCC$NES)/3, label = sup_lab, col = "grey10", size = 3, family = "IBMPlexSans") #add annotation for the negative enrichment direction
+```
+
+
+```{r, echo = FALSE, eval = TRUE, error = TRUE}
+roundcols <- c("enrichmentScore", "NES", "pvalue", "p.adjust", "q.value")
+
+DT::datatable(df.CC %>% dplyr::select(-leading_edge, -core_enrichment), extensions = 'Buttons',
+                options = list(order = list(list(7 , 'asc')),
+                               "dom" = 'Blfrtip',
+                               buttons = c('copy', 'csv', 'excel')),
+                caption = 'Significant Proteins') %>%
+    DT::formatRound("enrichmentScore", digits=3) %>%
+    DT::formatRound("NES", digits=3) %>%
+    DT::formatSignif("pvalue", digits=5) %>%
+    DT::formatSignif("p.adjust", digits=5) %>%
+    DT::formatSignif("qvalue", digits=5)
+
+```

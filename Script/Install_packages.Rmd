@@ -13,10 +13,12 @@ install.packages("DT")
 install.packages("arrow")
 install.packages("missForest")
 install.packages("rmdformats")
+install.packages("msigdbr")
 
 #packages from Bioconductor
 BiocManager::install("limma")
 BiocManager::install("proDA")
+BiocManager::install("clusterProfiler")
 
 #packages from GitHub
 install_github("https://github.com/vdemichev/diann-rpackage")

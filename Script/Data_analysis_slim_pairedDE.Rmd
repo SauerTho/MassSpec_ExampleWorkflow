@@ -53,7 +53,7 @@ df <- read_parquet("./InputData/Example_Raw_Data/MassSpec_diaPASEF_90SPD_BxPC3_P
 #download file from Nextcloud by uncommenting the following code. The file willd be downloaded to the defined filepath and loaded as df. Make sure to adjust the filepath to your needs. The code checks if the file already exists, and if not, it will download it. This is to avoid downloading the file multiple times if you run the script multiple times.
 #data_file <- "./InputData/Example_Raw_Data/MassSpec_diaPASEF_90SPD_BxPC3_Panc1_full.parquet"
 #if (!file.exists(data_file) && grepl("full", data_file, fixed = TRUE)) {
-#  full_url <- "https://cloud.oxygin.net/s/QCCXePLWHbQNzKj"
+#  full_url <- "https://cloud.oxygin.net/public.php/dav/files/QCCXePLWHbQNzKj/?accept=zip"
 #  cat("Downloading full dataset (~105 MB)...\n")
 #  download.file(full_url, data_file, mode = "wb", quiet = FALSE)
 #  }

@@ -32,10 +32,10 @@ set.seed(1337) #this makes results (e.g imputation) reproducible
 ```
 
 This script will handle the processing of a DIA-NN output file, transform the search engine output to a unique *protein quantity matrix*, perform basic *preprocessing* to make the data ready for further analysis.
-Furthermore, it includes basic principle component analysis *(PCA)* clustering, differential expression analysis and Gene Set Enrichment Analysis *(GSEA)*.
+Furthermore, it includes basic principle component analysis *(PCA)* clustering, **paired** differential expression analysis and Gene Set Enrichment Analysis *(GSEA)*.
 
 **Example Data:**
-The example data used in this script are diaPASEF data acquired with a timsTOF Flex HT from two pancreatic cancer cell lines (BxPC3 and PanC1) with 65replicates each. The data were acquired on an EvoSep One LC system using a 90 SPD method. The DIA-NN output was generated using DIA-NN version 2.0 with a spectral library generated from the same data using DIA-NN's library-free search option.
+The example data used in this script are diaPASEF data acquired with a timsTOF Flex HT from two pancreatic cancer cell lines (BxPC3 and PanC1) with 8 replicates each. The data were acquired on an EvoSep One LC system using a 90 SPD method. The DIA-NN output was generated using DIA-NN version 2.0 with a spectral library generated from the same data using DIA-NN's library-free search option. For improved runtimes and to reduce file size, the output file was subsetted to 250.000 rows, instead of >950.000 rows (Option A in chunk below). *However*, full dataset can be downloaded separately if needed, instructions in code below (Option B in chunk below).
 
 # Processing DIA-NN Output
 
@@ -51,9 +51,9 @@ df <- read_parquet("./InputData/Example_Raw_Data/MassSpec_diaPASEF_90SPD_BxPC3_P
 
 #Option B: Full dataset (105 mb, from Nextcloud, increased runtimes)
 #download file from Nextcloud by uncommenting the following code. The file willd be downloaded to the defined filepath and loaded as df. Make sure to adjust the filepath to your needs. The code checks if the file already exists, and if not, it will download it. This is to avoid downloading the file multiple times if you run the script multiple times.
-#data_file <- "./InputData/Example_Raw_Data/MassSpec_diaPASEF_90SPD_BxPC3_Panc1_full.parquet"
-#if (!file.exists(data_file) && grepl("full", data_file, fixed = TRUE)) {
-#  full_url <- "https://cloud.oxygin.net/public.php/dav/files/QCCXePLWHbQNzKj/?accept=zip"
+#data_file <- "./InputData/Example_Raw_Data/MassSpec_diaPASEF_90SP_#BxPC3_Panc1_full.parquet"
+#if (!file.exists(data_file) && grepl("full", data_file, fixed = #TRUE)) {
+#  full_url <- "https://cloud.oxygin.net/public.php/dav/files/QCCX##PLWHbQNzKj/?accept=zip"
 #  cat("Downloading full dataset (~105 MB)...\n")
 #  download.file(full_url, data_file, mode = "wb", quiet = FALSE)
 #  }
@@ -106,6 +106,7 @@ meta <- read.csv("./InputData/Example_Meta_Data/Example_meta.csv", header = TRUE
 rm(list=ls()[! ls() %in% c("data", "meta")]) 
 ```
 
+
 ```{r}
 ########################################################
 ##QC: Check for low ID samples
@@ -148,7 +149,7 @@ check_valids <- function(data, meta, threshold = .5) {
     coord_flip() +
     scale_alpha_manual(values = c("FALSE" = 1, "TRUE" = 0.7), guide = "none") +
     labs(
-      title = "Proteins Identified per Sample",
+      title = "Proteins Identified per Sample from Raw Data",
       subtitle = paste("Red line:", round(threshold * n_rows), "proteins (", 
                       threshold*100, "% of", n_rows, "total)"),
       x = "Sample", y = "Proteins Identified",
@@ -193,9 +194,6 @@ In this section, we will perform basic preprocessing on the data, which includes
 ########################################################
 ##Filtering for completeness
 ########################################################
-#for this step we need the sample to group/condition mapping which should be stored in a meta file
-####!!!!ADJUSTMENT NEEDED: define filepath!!!!!
-meta <- read.csv("./InputData/Example_Meta_Data/Example_meta.csv", header = TRUE, sep = ",") #load the mapping file
 
 ## We will apply a condition filter: A protein has to be identified in a certain fraction of samples per group to be included.
 # Define filter threshold (e.g., 0.8 for 80%)
@@ -252,7 +250,7 @@ data %<>%
 
 #missForest is used for random forest based imputation
 data_imputed <- data %>% rotate_df(cn = TRUE) %>% as.matrix() %>%
-missForest::missForest()
+missForest()
 
 data <- data_imputed[["ximp"]] %>% as.data.frame() %>% sjmisc::rotate_df(cn = FALSE) %>% rownames_to_column(var = "Genes") #transform back to dataframe
 
@@ -265,7 +263,7 @@ DT::datatable(data, extensions = 'Buttons',
                       ))
 
 
-rm(list=ls()[! ls() %in% c("data")]) 
+rm(list=ls()[! ls() %in% c("data", "meta")])
 ```
 
 
@@ -280,10 +278,6 @@ PCA (principal component analysis) is a technique used to reduce the dimensional
 ########################################################
 ##Data preparation
 ########################################################
-
-#For the clustering analysis, we need the sample to group mapping information.
-#Make sure that the sample names in the mapping file match the sample names in the processed data!
-meta <- read.csv("./InputData/Example_Meta_Data/Example_meta.csv", header = TRUE, sep = ",") #load the mapping file
 
 ##The PCA function requires the data with samples in rows and features in columns, so first we transpose the data. Furthermore, it requires rownames.
 data_t <- data %>% rotate_df(cn = 1)
@@ -317,6 +311,7 @@ PCA_df %>%
 
 rm(list=ls()[! ls() %in% c("data", "meta")]) 
 ```
+
 
 
 # Differential Expression Analysis for paired setups

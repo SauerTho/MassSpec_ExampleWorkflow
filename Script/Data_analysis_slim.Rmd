@@ -51,13 +51,13 @@ df <- read_parquet("./InputData/Example_Raw_Data/MassSpec_diaPASEF_90SPD_BxPC3_P
 
 #Option B: Full dataset (105 mb, from Nextcloud, increased runtimes)
 #download file from Nextcloud by uncommenting the following code. The file willd be downloaded to the defined filepath and loaded as df. Make sure to adjust the filepath to your needs. The code checks if the file already exists, and if not, it will download it. This is to avoid downloading the file multiple times if you run the script multiple times.
-data_file <- "./InputData/Example_Raw_Data/MassSpec_diaPASEF_90SPD_BxPC3_Panc1_full.parquet"
-if (!file.exists(data_file) && grepl("full", data_file, fixed = TRUE)) {
-  full_url <- "https://cloud.oxygin.net/public.php/dav/files/QCCXePLWHbQNzKj/?accept=zip"
-  cat("Downloading full dataset (~105 MB)...\n")
-  download.file(full_url, data_file, mode = "wb", quiet = FALSE)
-  }
-df <- read_parquet(data_file)
+#data_file <- "./InputData/Example_Raw_Data/MassSpec_diaPASEF_90SP_#BxPC3_Panc1_full.parquet"
+#if (!file.exists(data_file) && grepl("full", data_file, fixed = #TRUE)) {
+#  full_url <- "https://cloud.oxygin.net/public.php/dav/files/QCCX##PLWHbQNzKj/?accept=zip"
+#  cat("Downloading full dataset (~105 MB)...\n")
+#  download.file(full_url, data_file, mode = "wb", quiet = FALSE)
+#  }
+#df <- read_parquet(data_file)
 
 ##get unique proteins from output by using proteotypic peptides
 unique.proteins <- diann_maxlfq(df[df$Lib.Q.Value <= 0.01 & df$Lib.PG.Q.Value <= 0.01 & df$Proteotypic >= 1,], group.header="Genes", id.header = "Genes.MaxLFQ.Unique", sample.header = "Run") #we apply a FDR cutoff of 1% for both peptides and proteins, and require that the peptides used for quantification are proteotypic
@@ -263,7 +263,7 @@ DT::datatable(data, extensions = 'Buttons',
                       ))
 
 
-rm(list=ls()[! ls() %in% c("data")]) 
+rm(list=ls()[! ls() %in% c("data", "meta")])
 ```
 
 
@@ -278,11 +278,6 @@ PCA (principal component analysis) is a technique used to reduce the dimensional
 ########################################################
 ##Data preparation
 ########################################################
-
-#For the clustering analysis, we need the sample to group mapping information.
-#Make sure that the sample names in the mapping file match the sample names in the processed data!
-meta <- read.csv("./InputData/Example_Meta_Data/Example_meta.csv", header = TRUE, sep = ",") #load the mapping file
-
 ##The PCA function requires the data with samples in rows and features in columns, so first we transpose the data. Furthermore, it requires rownames.
 data_t <- data %>% rotate_df(cn = 1)
 
@@ -519,7 +514,6 @@ Further reading:
   
 </details>
 
-
 **Disclaimer:** The GSEA suffers from the reduced dataset size described in the beginning. The unspecific filtering really dismantles the biological information in the data, which is why the GSEA results are not very meaningful. However, the code is provided for demonstration purposes and can be applied to the full dataset without any adjustments.
 
 ```{r echo = FALSE}
@@ -562,7 +556,7 @@ However, there a more subontologies available, which can be used for GSEA as wel
 gseBP <- gseGO(geneList = gene_list, #gene_list contains genes and their log2FC values, which are used for ranking the genes in GSEA
              ont = "BP", #specifies that the biological process ontology should be used for the analysis
              keyType = "SYMBOL", #Gene symbols as input
-             pvalueCutoff = p.GSEA, #p-value threshold for significant enrichment
+             pvalueCutoff = p.GSEA, #p-value threshold for significant enrichment !!!!!!!DEFAULT: 0.10, which is rather relaxed. Adjust as desired!!!!!!
              pAdjustMethod = "BH", #Benjamini-Hochberg correction for multiple testing
              verbose = FALSE, #omit message printing
              seed = TRUE, #consider random seed for reproducibility
@@ -613,7 +607,7 @@ DT::datatable(df.BP %>% dplyr::select(-leading_edge, -core_enrichment), extensio
 gseMF <- gseGO(geneList = gene_list, #gene_list contains genes and their log2FC values, which are used for ranking the genes in GSEA
              ont = "MF", #specifies that the molecular function ontology should be used for the analysis
              keyType = "SYMBOL", #Gene symbols as input
-             pvalueCutoff = p.GSEA, #p-value threshold for significant enrichment
+             pvalueCutoff = p.GSEA, #p-value threshold for significant enrichment !!!!!!!DEFAULT: 0.10, which is rather relaxed. Adjust as desired!!!!!!
              pAdjustMethod = "BH", #Benjamini-Hochberg correction for multiple testing
              verbose = FALSE, #omit message printing
              seed = TRUE, #consider random seed for reproducibility
@@ -664,7 +658,7 @@ DT::datatable(df.MF %>% dplyr::select(-leading_edge, -core_enrichment), extensio
 gseCC <- gseGO(geneList = gene_list, #gene_list contains genes and their log2FC values, which are used for ranking the genes in GSEA
              ont = "CC", #specifies that the cellular component ontology should be used for the analysis
              keyType = "SYMBOL", #Gene symbols as input
-             pvalueCutoff = p.GSEA, #p-value threshold for significant enrichment
+             pvalueCutoff = p.GSEA, #p-value threshold for significant enrichment !!!!!!!DEFAULT: 0.10, which is rather relaxed. Adjust as desired!!!!!!
              pAdjustMethod = "BH", #Benjamini-Hochberg correction for multiple testing
              verbose = FALSE, #omit message printing
              seed = TRUE, #consider random seed for reproducibility

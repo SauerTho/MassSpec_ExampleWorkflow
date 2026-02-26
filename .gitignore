@@ -4,4 +4,4 @@
 .Ruserdata
 *.html
 *OutputData/*.csv
-*InputData/Example_Raw_Data/MassSpec_diaPASEF_90SPD_BxPC3_Panc1_full.parquet
+MassSpec_diaPASEF_90SPD_BxPC3_Panc1_full.parquet

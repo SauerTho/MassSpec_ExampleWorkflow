@@ -35,6 +35,7 @@ Why projects? They bundle files, set working directory, save history/settings, a
 1. Within RStudio, navigate in your file manager to the Script folder and open `Install_packages.Rmd` by double-clicking.
 2. Click on green triangle within {r} line.
 3. It might be necessary to restart RStudio after installation is complete. You can do this by clicking on Session -> Restart R.
+4. Within R-Studio go to Tools -> Global Options -> R Markdown -> Evaluate chungs in directory -> set to "Project".
 
 This installs all required packages, which may take a few minutes. You only need to do this once.
 

@@ -48,6 +48,7 @@ The DIA-NN raw output was processed using the corresponding R-package. A unique 
 #load the diann output (this can be very large and therefore can take some time)
 #Option A: subsetted dataset for improved runtimes, included in repo
 df <- read_parquet("./InputData/Example_Raw_Data/MassSpec_diaPASEF_90SPD_BxPC3_Panc1_sub.parquet") ####!!!!ADJUSTMENT NEEDED FOR OWN DATA: define filepath!!!!!
+#If you have troubles with the filepath, thoug the file is in the correct location, go to Tools > Global Options > R Markdown > and set evaluate chunks in directory to "Project".
 
 #Option B: Full dataset (105 mb, from Nextcloud, increased runtimes)
 #download file from Nextcloud by uncommenting the following code. The file willd be downloaded to the defined filepath and loaded as df. Make sure to adjust the filepath to your needs. The code checks if the file already exists, and if not, it will download it. This is to avoid downloading the file multiple times if you run the script multiple times.

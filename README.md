@@ -5,10 +5,12 @@ This guide gets you into analyzing DIA-NN proteomics data using R.
 ## Prerequisites
 * **R**: Download & Install current version from https://cran.r-project.org/
 * **RStudio**: Download & install current version from  https://posit.co/download/rstudio-desktop/
+* **RTools**: ***For Windows users*** - Download and install current version from https://cran.r-project.org/bin/windows/Rtools/
+* **Xcode Command Line Tools** - ***MacOS users*** - Open a Terminal on your mac (Cmd+Space, type "Terminal", hit Enter) and run `xcode-select --install` to install the necessary command line tools for package compilation. 
 
 ## Step 1: Download and Open
 
-1. Download latest repository version by clicking the <span style="color:green">Code</span> button and selecting "Download ZIP".
+1. Download latest repository version by clicking the green Code button and selecting "Download ZIP".
 2. Unzip to a folder of your choice.
 3. Open RStudio -> File -> Open Projects in New Session -> select `MassSpec_ExampleWorkflow.Proj`.
 

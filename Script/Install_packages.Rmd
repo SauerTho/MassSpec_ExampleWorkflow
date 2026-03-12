@@ -7,7 +7,7 @@ install.packages("tidyverse")
 install.packages("magrittr")
 install.packages("ggpubr")
 install.packages("sjmisc")
-install.packages("ggalt")
+#install.packages("ggalt")
 install.packages("ggrepel")
 install.packages("DT")
 install.packages("arrow")
@@ -23,6 +23,7 @@ BiocManager::install("clusterProfiler")
 
 #packages from GitHub
 remotes::install_github("https://github.com/vdemichev/diann-rpackage")
+remotes::install_github("hrbrmstr/ggalt", force = TRUE)
 
 ```
 

@@ -23,7 +23,7 @@ BiocManager::install("clusterProfiler")
 
 #packages from GitHub
 remotes::install_github("https://github.com/vdemichev/diann-rpackage")
-remotes::install_github("hrbrmstr/ggalt", force = TRUE)
+remotes::install_github("hrbrmstr/ggalt")
 
 ```
 

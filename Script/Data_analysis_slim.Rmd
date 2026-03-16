@@ -168,10 +168,10 @@ qc_res <- check_valids(data, meta) #run the function
 
 ## In case of a warning and if some samples should be removed, uncomment (remove "#") the following code and specify the columns that should be removed by their column name.
 
-# samples2kick <- qc_res %>% filter(below_threshold) %>% pull(samples)
-# data <- data %>% dplyr::select(Genes, all_of(setdiff(colnames(data), samples2kick)))
-# meta <- meta %>% filter(!samples %in% samples2kick)
-# cat("Removed", length(samples2kick), "samples: ", paste(samples2kick, collapse = ", "))
+ samples2kick <- qc_res %>% filter(below_threshold) %>% pull(samples)
+ data <- data %>% dplyr::select(Genes, all_of(setdiff(colnames(data), samples2kick)))
+ meta <- meta %>% filter(!samples %in% samples2kick)
+ cat("Removed", length(samples2kick), "samples: ", paste(samples2kick, collapse = ", "))
 
 ## NOTE: In these training/example data, one sample is flagged as low-ID. However, this is due to reducing the size of the training dataset. You can decide wheter to keep it or not. In the full dataset, the sample is not flagged as low-ID, as it contains more proteins.
 
@@ -268,7 +268,6 @@ rm(list=ls()[! ls() %in% c("data", "meta")])
 ```
 
 
-
 # Clustering
 In this section, we will perform a basic principle component analysis (PCA) to visualize the data structure. The PCA will be performed on the processed data.
 Each point in the plot resembles a sample.
@@ -311,7 +310,6 @@ PCA_df %>%
 
 rm(list=ls()[! ls() %in% c("data", "meta")]) 
 ```
-
 
 # Differential Expression Analysis
 
@@ -579,8 +577,8 @@ ggplot(topBP, aes(x = reorder(Description, NES), y = NES, color = p.adjust)) + #
   scale_x_discrete(labels=function(x) str_wrap(x, width=60)) + #wrap long x-axis labels to a width of 60 characters
   theme(strip.text.x = element_text(size = 8)) + #adjust the size of the facet labels
   labs(x = "", y = "Normalized enrichemnt score (NES)", subtitle = "Top 10 positive and negative enrichments selected by normalized enrichment score", title = "GO:Biological Process") + #add axis labels and title
-  annotate("text", nrow(topBP)+.4, y = max(topBP$NES)/3, label = act_lab, col = "grey10", size = 3, family = "IBMPlexSans") + #add annotation for the positive enrichment direction
-  annotate("text", nrow(topBP)+.4, y = min(topBP$NES)/3, label = sup_lab, col = "grey10", size = 3, family = "IBMPlexSans") #add annotation for the negative enrichment direction
+  annotate("text", nrow(topBP)+.4, y = max(topBP$NES)/3, label = act_lab, col = "grey10", size = 3) + #add annotation for the positive enrichment direction
+  annotate("text", nrow(topBP)+.4, y = min(topBP$NES)/3, label = sup_lab, col = "grey10", size = 3) #add annotation for the negative enrichment direction
 ```
 
 
@@ -630,8 +628,8 @@ ggplot(topMF, aes(x = reorder(Description, NES), y = NES, color = p.adjust)) + #
   scale_x_discrete(labels=function(x) str_wrap(x, width=60)) + #wrap long x-axis labels to a width of 60 characters
   theme(strip.text.x = element_text(size = 8)) + #adjust the size of the facet labels
   labs(x = "", y = "Normalized enrichemnt score (NES)", subtitle = "Top 10 positive and negative enrichments selected by normalized enrichment score", title = "GO:Molecular Function") + #add axis labels and title
-  annotate("text", nrow(topMF)+.4, y = max(topMF$NES)/3, label = act_lab, col = "grey10", size = 3, family = "IBMPlexSans") + #add annotation for the positive enrichment direction
-  annotate("text", nrow(topMF)+.4, y = min(topMF$NES)/3, label = sup_lab, col = "grey10", size = 3, family = "IBMPlexSans") #add annotation for the negative enrichment direction
+  annotate("text", nrow(topMF)+.4, y = max(topMF$NES)/3, label = act_lab, col = "grey10", size = 3) + #add annotation for the positive enrichment direction
+  annotate("text", nrow(topMF)+.4, y = min(topMF$NES)/3, label = sup_lab, col = "grey10", size = 3) #add annotation for the negative enrichment direction
 
 ```
 
@@ -682,8 +680,8 @@ ggplot(topCC, aes(x = reorder(Description, NES), y = NES, color = p.adjust)) + #
   scale_x_discrete(labels=function(x) str_wrap(x, width=60)) + #wrap long x-axis labels to a width of 60 characters
   theme(strip.text.x = element_text(size = 8)) + #adjust the size of the facet labels
   labs(x = "", y = "Normalized enrichemnt score (NES)", subtitle = "Top 10 positive and negative enrichments selected by normalized enrichment score", title = "GO:Cellular Component") + #add axis labels and title
-  annotate("text", nrow(topCC)+.4, y = max(topCC$NES)/3, label = act_lab, col = "grey10", size = 3, family = "IBMPlexSans") + #add annotation for the positive enrichment direction
-  annotate("text", nrow(topCC)+.4, y = min(topCC$NES)/3, label = sup_lab, col = "grey10", size = 3, family = "IBMPlexSans") #add annotation for the negative enrichment direction
+  annotate("text", nrow(topCC)+.4, y = max(topCC$NES)/3, label = act_lab, col = "grey10", size = 3) + #add annotation for the positive enrichment direction
+  annotate("text", nrow(topCC)+.4, y = min(topCC$NES)/3, label = sup_lab, col = "grey10", size = 3) #add annotation for the negative enrichment direction
 ```
 
 

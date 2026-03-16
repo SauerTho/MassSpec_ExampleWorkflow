@@ -562,8 +562,8 @@ ggplot(topBP, aes(x = reorder(Description, NES), y = NES, color = p.adjust)) + #
   scale_x_discrete(labels=function(x) str_wrap(x, width=60)) + #wrap long x-axis labels to a width of 60 characters
   theme(strip.text.x = element_text(size = 8)) + #adjust the size of the facet labels
   labs(x = "", y = "Normalized enrichemnt score (NES)", subtitle = "Top 10 positive and negative enrichments selected by normalized enrichment score", title = "GO:Biological Process") + #add axis labels and title
-  annotate("text", nrow(topBP)+.4, y = max(topBP$NES)/3, label = act_lab, col = "grey10", size = 3, family = "IBMPlexSans") + #add annotation for the positive enrichment direction
-  annotate("text", nrow(topBP)+.4, y = min(topBP$NES)/3, label = sup_lab, col = "grey10", size = 3, family = "IBMPlexSans") #add annotation for the negative enrichment direction
+  annotate("text", nrow(topBP)+.4, y = max(topBP$NES)/3, label = act_lab, col = "grey10", size = 3) + #add annotation for the positive enrichment direction
+  annotate("text", nrow(topBP)+.4, y = min(topBP$NES)/3, label = sup_lab, col = "grey10", size = 3) #add annotation for the negative enrichment direction
 ```
 
 
@@ -613,8 +613,8 @@ ggplot(topMF, aes(x = reorder(Description, NES), y = NES, color = p.adjust)) + #
   scale_x_discrete(labels=function(x) str_wrap(x, width=60)) + #wrap long x-axis labels to a width of 60 characters
   theme(strip.text.x = element_text(size = 8)) + #adjust the size of the facet labels
   labs(x = "", y = "Normalized enrichemnt score (NES)", subtitle = "Top 10 positive and negative enrichments selected by normalized enrichment score", title = "GO:Molecular Function") + #add axis labels and title
-  annotate("text", nrow(topMF)+.4, y = max(topMF$NES)/3, label = act_lab, col = "grey10", size = 3, family = "IBMPlexSans") + #add annotation for the positive enrichment direction
-  annotate("text", nrow(topMF)+.4, y = min(topMF$NES)/3, label = sup_lab, col = "grey10", size = 3, family = "IBMPlexSans") #add annotation for the negative enrichment direction
+  annotate("text", nrow(topMF)+.4, y = max(topMF$NES)/3, label = act_lab, col = "grey10", size = 3) + #add annotation for the positive enrichment direction
+  annotate("text", nrow(topMF)+.4, y = min(topMF$NES)/3, label = sup_lab, col = "grey10", size = 3) #add annotation for the negative enrichment direction
 
 ```
 
@@ -665,8 +665,8 @@ ggplot(topCC, aes(x = reorder(Description, NES), y = NES, color = p.adjust)) + #
   scale_x_discrete(labels=function(x) str_wrap(x, width=60)) + #wrap long x-axis labels to a width of 60 characters
   theme(strip.text.x = element_text(size = 8)) + #adjust the size of the facet labels
   labs(x = "", y = "Normalized enrichemnt score (NES)", subtitle = "Top 10 positive and negative enrichments selected by normalized enrichment score", title = "GO:Cellular Component") + #add axis labels and title
-  annotate("text", nrow(topCC)+.4, y = max(topCC$NES)/3, label = act_lab, col = "grey10", size = 3, family = "IBMPlexSans") + #add annotation for the positive enrichment direction
-  annotate("text", nrow(topCC)+.4, y = min(topCC$NES)/3, label = sup_lab, col = "grey10", size = 3, family = "IBMPlexSans") #add annotation for the negative enrichment direction
+  annotate("text", nrow(topCC)+.4, y = max(topCC$NES)/3, label = act_lab, col = "grey10", size = 3) + #add annotation for the positive enrichment direction
+  annotate("text", nrow(topCC)+.4, y = min(topCC$NES)/3, label = sup_lab, col = "grey10", size = 3) #add annotation for the negative enrichment direction
 ```
 
 

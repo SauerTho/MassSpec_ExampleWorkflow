@@ -6,3 +6,4 @@
 *OutputData/*.csv
 MassSpec_diaPASEF_90SPD_BxPC3_Panc1_full.parquet
 *.DS_Store
+**/.DS_Store
